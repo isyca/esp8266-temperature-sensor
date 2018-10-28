@@ -5,7 +5,7 @@
 
   Created 31 August 2018
   By Ivan Sy
-  Modified 3 September 2018
+  Modified 28 October 2018
   By Ivan Sy
 
   https://github.com/isyca/esp8266-temperature-sensor
@@ -23,25 +23,32 @@ const int sensorPIN = 0;
  
 const char* ssid = "SSID";
 const char* password = "password";
+const char* hostnameStr = "stovetemp-";
 
 String destSchema = "http://";
 String destHostName = "192.168.0.10:8085";
 String destURL = "/?accessoryId=kitchentemp&value=";
 
 int loopTime = 30000;    // milliseconds before each loop
+int offcounter = 0;
+int offcountermax = 10;
 float temperature = 0;
 
 OneWire oneWirePin(sensorPIN);
 DallasTemperature sensors(&oneWirePin);
 
 void setup() {
+  sensors.begin();
+  String mac =  WiFi.macAddress();
+  mac.replace(":","");
+  WiFi.hostname(hostnameStr + mac);
+  
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP(ssid,password);
-  sensors.begin();
 }
 
 void loop() {
-  sensors.requestTemperatures(); 
+  sensors.requestTemperatures();
   temperature = sensors.getTempCByIndex(0);
   char buff[10];
   String temperatureConverted = dtostrf(temperature,2,0,buff);
@@ -52,7 +59,12 @@ void loop() {
     httpClient.begin(urlTemperature);
     httpClient.GET();
     httpClient.end();
-
-    delay(loopTime);
+  } else {
+    offcounter++;
+    if (offcounter == (offcountermax - 1))
+    {
+      ESP.reset();
+    }
   }
+  delay(loopTime); 
 }
